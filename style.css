@@ -21,6 +21,7 @@ html {
 
 body {
     font-family: 'Roboto', 'Helvetica', sans-serif;
+    min-width: 980px;
 }
 
 h1, h2 {
@@ -106,6 +107,6 @@ h2 {
     background-color: cyan;
 }
 
-.wallet {
+.thing {
     background-color: green;
 }

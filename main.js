@@ -1,13 +1,7 @@
-/*
- * Note: the game used to be called Find Your Wallet. The wallet was originally
- * the Thing hidden in the field. Hence the naming of certain variables
- * (walletChar, walletCoord_i, etc.)
- */
-
 /********************** FIELD CLASS **********************/
 
-// Declare chars for wallet, hole, field and path (for console debugging)
-const walletChar = '^';
+// Declare chars for thing, hole, field and path (for console debugging)
+const thingChar = '^';
 const holeChar = '0';
 const grassChar = '.';
 const pathChar = '*';
@@ -17,9 +11,9 @@ const playerChar = 'P';
 // Initialize with 1, since we're including [0][0] in the count
 let numContinuous = 1;
 
-// Store the wallet coordinates, since the wallet is destroyed by the validity test
-let walletCoord_i = 0;
-let walletCoord_j = 0;
+// Store the thing coordinates, since the thing is destroyed by the validity test
+let thingCoord_i = 0;
+let thingCoord_j = 0;
 
 class Field {
     /*............... Constructor ...............*/
@@ -74,19 +68,19 @@ class Field {
             }
         }
 
-        // randomly place wallet in the field
-        // wallet cannot be on player's location or replace an existing hole
-        let walleti = playeri;
-        let walletj = playerj;
-        while (walleti === playeri && walletj === playerj) {
-            walleti = Math.floor(Math.random() * length);
-            walletj = Math.floor(Math.random() * length);
-            if (field[walleti][walletj] === holeChar) {
-                walleti = playeri;
-                walletj = playerj;
+        // randomly place thing in the field
+        // thing cannot be on player's location or replace an existing hole
+        let thingi = playeri;
+        let thingj = playerj;
+        while (thingi === playeri && thingj === playerj) {
+            thingi = Math.floor(Math.random() * length);
+            thingj = Math.floor(Math.random() * length);
+            if (field[thingi][thingj] === holeChar) {
+                thingi = playeri;
+                thingj = playerj;
             }
         }
-        field[walleti][walletj] = walletChar;
+        field[thingi][thingj] = thingChar;
 
         // wrap field, playeri and playerj in an object and return the object
         let fieldObj = {field, playeri, playerj};
@@ -102,9 +96,9 @@ class Field {
         }
     }
 
-    // test whether current location results in win (user is on wallet)
+    // test whether current location results in win (user is on thing)
     checkGameWin(char) {
-        if (char === walletChar) {
+        if (char === thingChar) {
             return true;
         }
         else return false;
@@ -145,11 +139,11 @@ class Field {
         else return true;
     }
 
-    // Check whether there is a wallet at [i][j] and record its coordinates if so
-    recordWalletLocation(i, j) {
-        if (this.isInBounds(i, j) && this.field[i][j] === walletChar) {
-            walletCoord_i = i;
-            walletCoord_j = j;
+    // Check whether there is a thing at [i][j] and record its coordinates if so
+    recordThingLocation(i, j) {
+        if (this.isInBounds(i, j) && this.field[i][j] === thingChar) {
+            thingCoord_i = i;
+            thingCoord_j = j;
         }
     }
 
@@ -197,7 +191,7 @@ class Field {
     // Use recursion to count the number of cells continuous with [i][j]
     countContinuous(i, j) {
         // CHECK NORTH
-        this.recordWalletLocation(i - 1, j);
+        this.recordThingLocation(i - 1, j);
         if (this.isInBounds(i - 1, j) &&
             this.field[i - 1][j] != holeChar &&
             this.field[i - 1][j] != pathChar &&
@@ -208,7 +202,7 @@ class Field {
         }
 
         // CHECK SOUTH
-        this.recordWalletLocation(i + 1, j);
+        this.recordThingLocation(i + 1, j);
         if (this.isInBounds(i + 1, j) &&
             this.field[i + 1][j] != holeChar &&
             this.field[i + 1][j] != pathChar &&
@@ -219,7 +213,7 @@ class Field {
         }
 
         // CHECK WEST
-        this.recordWalletLocation(i, j - 1);
+        this.recordThingLocation(i, j - 1);
         if (this.isInBounds(i, j - 1) &&
             this.field[i][j - 1] != holeChar &&
             this.field[i][j - 1] != pathChar &&
@@ -230,7 +224,7 @@ class Field {
         }
 
         // CHECK EAST
-        this.recordWalletLocation(i, j + 1);
+        this.recordThingLocation(i, j + 1);
         if (this.isInBounds(i, j + 1) &&
             this.field[i][j + 1] != holeChar &&
             this.field[i][j + 1] != pathChar &&
@@ -257,9 +251,9 @@ class Field {
         }
     }
 
-    // Replace wallet in its old location, because the recursive function destroys the wallet
-    replaceWallet() {
-        this.field[walletCoord_i][walletCoord_j] = walletChar;
+    // Replace thing in its old location, because the recursive function destroys the thing
+    replaceThing() {
+        this.field[thingCoord_i][thingCoord_j] = thingChar;
     }
 
     // Using the above functions, check whether or not the field is "valid".
@@ -272,12 +266,124 @@ class Field {
         let totalCells = this.getTotalCells();
         if (numContinuous === totalCells - numHoles) {
             this.resetPathToGrass();
-            this.replaceWallet();
+            this.replaceThing();
             return true;
         }
         else {
             return false;
         }
+    }
+}
+
+/********************** AUDIO SETUP **********************/
+
+// Urls of audio files
+const musicUrl = './media/teamrocket_edit.wav';
+const thingFoundUrl = './media/Absorb2.wav';
+const levelUpUrl = './media/Absorb.wav';
+const gameOverUrl = './media/Bide.wav';
+
+// Set gain values for music and SFX
+const musicGain = 0.35;
+const sfxGain = 0.35;
+
+// Var for storing whether or not audio is playing
+let audioIsPlaying = false;
+
+// Var for storing whether or not game is in "danger zone"
+let inDangerZone = false;
+
+// The music buffer source needs to be outside the function scope
+// since you want to control the playback dynamically based on
+// the game state
+let sourceMusic;
+
+// Function for loading the music audio buffer
+function loadMusic() {
+    // Set up web audio pipeline with gain module
+    let context = new AudioContext();
+    sourceMusic = context.createBufferSource();
+    let gain = context.createGain();
+    gain.gain.value = musicGain;
+    sourceMusic.connect(gain);
+    gain.connect(context.destination);
+
+    // Get data using AJAX
+    let request = new XMLHttpRequest();
+    request.open('GET', musicUrl, true);
+    request.responseType = 'arraybuffer';
+    request.onload = () => {
+        context.decodeAudioData(request.response, response => {
+            // Set up source with the correct buffer and looping settings
+            sourceMusic.buffer = response;
+            sourceMusic.loop = true;
+            sourceMusic.loopStart = 1.7363; // magic loop start position calculated from song tempo
+            sourceMusic.loopEnd = response.duration;
+        }, () => {
+            console.error('AJAX request for audio playback failed!');
+        });
+    };
+
+    // Send request
+    request.send();
+}
+
+// Function for loading a SFX audio buffer and playing it
+function playSFX(fileUrl) {
+    // Set up web audio pipeline with gain module
+    let context = new AudioContext();
+    let source = context.createBufferSource();
+    let gain = context.createGain();
+    gain.gain.value = sfxGain;
+    source.connect(gain);
+    gain.connect(context.destination);
+
+    // Get data using AJAX
+    let request = new XMLHttpRequest();
+    request.open('GET', fileUrl, true);
+    request.responseType = 'arraybuffer';
+    request.onload = () => {
+        context.decodeAudioData(request.response, response => {
+            // Set up and play the sample
+            source.buffer = response;
+            source.start();
+        }, () => {
+            console.error('AJAX request for audio playback failed!');
+        });
+    };
+
+    // Send request
+    request.send();
+}
+
+// Function for starting music playback
+function startMusic() {
+    if (!audioIsPlaying) {
+        loadMusic();
+        sourceMusic.start(0);
+        audioIsPlaying = true;
+    }
+}
+
+// Function for stopping music playback
+function stopMusic() {
+    if (audioIsPlaying) {
+        sourceMusic.stop();
+        audioIsPlaying = false;
+    }
+}
+
+// Function for triggering "danger-mode" playback (+2 semitones)
+function dangerMusic() {
+    if (audioIsPlaying) {
+        sourceMusic.playbackRate.value = 1.1225; // transpose 2 semitones
+    }
+}
+
+// Function for deactivating danger mode
+function safetyMusic() {
+    if (audioIsPlaying) {
+        sourceMusic.playbackRate.value = 1.0;
     }
 }
 
@@ -336,7 +442,7 @@ let streakVal = 0;
 let bestStreakVal = 0;
 let level = 1;
 
-// Number of seconds to add to timer when a wallet is found
+// Number of seconds to add to timer when a thing is found
 let numSecsToAdd = initialNumSecsToAdd;
 
 /*............... Timer Setup ...............*/
@@ -360,6 +466,13 @@ let runningTimer; // this will store setInterval()
 // Check if timer is at 00:00:00
 function timerAtZero() {
     if (minutes === 0 && seconds === 0 && centiseconds === 0) {
+        return true;
+    }
+}
+
+// Check if timer is below 05:00:00
+function timerInDanger() {
+    if (minutes === 0 && seconds <= 4) {
         return true;
     }
 }
@@ -409,8 +522,23 @@ function timerTick() {
 
 // Start the timer
 function startTimer() {
+    // Start the timer countdown
     runningTimer = setInterval(function() {
         timerTick();
+
+        // if timer is in danger zone (below 05:00:00) and danger music not already
+        // triggered, trigger danger music
+        if (timerInDanger() && !inDangerZone) {
+            inDangerZone = true;
+            dangerMusic();
+        }
+
+        // conversely, if timer not in danger zone and music has not yet been reset,
+        // reset music to normal
+        else if (!timerInDanger() && inDangerZone) {
+            inDangerZone = false;
+            safetyMusic();
+        }
 
         // if timer runs to zero, game over
         if (timerAtZero()) {
@@ -443,8 +571,8 @@ function plotField(field, gridDiv) {
                 gridDiv.innerHTML += '<div class="player"></div>';
             }
             // this will not appear in the final product
-            else if (field.field[i][j] === walletChar) {
-                gridDiv.innerHTML += '<div class="wallet"></div>';
+            else if (field.field[i][j] === thingChar) {
+                gridDiv.innerHTML += '<div class="thing"></div>';
             }
         }
     }
@@ -472,6 +600,16 @@ function gameWin() {
     }
     updateScoreboard();
     winReset(); // stillPlaying will switch back to true here
+
+    // Play appropriate SFX
+    // If level remains same, play thingFoundUrl
+    // If leveled up, play levelUpUrl
+    if (streakVal % 3 === 0) {
+        playSFX(levelUpUrl);
+    }
+    else {
+        playSFX(thingFoundUrl);
+    }
 }
 
 // You lost, you dumb fuck!
@@ -483,6 +621,12 @@ function gameLose() {
     let player = document.querySelector('.player');
     player.style.backgroundColor = 'red';
     clearInterval(runningTimer);
+
+    // Stop music when game ends
+    stopMusic();
+
+    // Play game over SFX
+    playSFX(gameOverUrl);
 }
 
 // Check field for game-over conditions. char is the character returned from updatePosition() method
@@ -495,17 +639,18 @@ function checkGameOver(field, char) {
     }
 }
 
-// Check if the player's move is the first move of the game (to start the timer etc.)
+// Check if the player's move is the first move of the game (to start the timer, audio, etc.)
 function checkIfFirstMove() {
     // update the derpy firstMove array
     let temp = firstMove[1];
     firstMove[1] = true;
     firstMove[0] = temp;
 
-    // only call startTimer once (when the player makes the first move)
+    // only call startTimer and startMusic once (when the player makes the first move)
     if (firstMove[1] && !firstMove[0]) {
         updateDisplay();
         startTimer();
+        startMusic();
     }
 }
 
@@ -584,7 +729,7 @@ function reset() {
     updateScoreboard();
 }
 
-/*............... Game on! ...............*/
+/*............... Game on ...............*/
 
 // Plot initial field
 plotField(myField, fieldDiv);
@@ -622,6 +767,7 @@ document.onkeydown = playerMove;
 // Press ENTER to hard reset the game
 document.addEventListener('keydown', function () {
     if (event.code === 'Enter') {
+        stopMusic();
         reset();
     }
 })

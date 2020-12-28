@@ -492,7 +492,7 @@ while (!myField.isValid()) {
 }
 
 // Prepare initial field for display with CSS grid
-// Game area's width and height are 600px in desktop mode
+// Game area's width and height are 420px in desktop mode
 let fieldDiv = document.querySelector('.field-grid');
 let fieldWidth = 420;
 let fieldHeight = 420;

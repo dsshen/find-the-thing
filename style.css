@@ -103,7 +103,7 @@ h2 {
 
 .field-grid {
     display: grid;
-    grid-gap: 0 0;
+    gap: 0 0;
     margin: 0 25px;;
 }
 

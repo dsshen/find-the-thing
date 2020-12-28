@@ -282,26 +282,29 @@ const musicUrl = './media/teamrocket_edit.wav';
 const thingFoundUrl = './media/Absorb2.wav';
 const levelUpUrl = './media/Absorb.wav';
 const gameOverUrl = './media/Bide.wav';
+const sfxUrls = [thingFoundUrl, levelUpUrl, gameOverUrl];
 
 // Hard-code gain values for music and SFX when they are on
 const musicGainOn = 0.35;
 const sfxGainOn = 0.35;
 
-// Var for storing whether or not audio is playing
+// Var for storing whether or not audio is playing (i.e. game is running)
 let audioIsPlaying = false;
 
 // Var for storing whether or not game is in "danger zone"
 let inDangerZone = false;
 
-// The music buffer source and gain nodes need to be outside the
-// function scope since you want to control the playback dynamically
-// based on the game state and the volume toggle button
-let sourceMusic;
-let gainMusic;
-let gainSFX;
+// Initialize var for storing audio buffer for music
+let bufferMusic;
 
-// Has the buffer source for music loaded?
-let sourceMusicLoaded = false;
+// Initialize array for storing audio buffers for SFX
+let buffersSFX = [];
+
+// Has the music audio buffer loaded?
+let bufferMusicLoaded = false;
+
+// Have the SFX audio buffers all loaded?
+let allSFXBuffersLoaded = false;
 
 // Vars for toggling volume on/off
 let gainMusicVal = musicGainOn;
@@ -309,57 +312,63 @@ let gainSFXVal = sfxGainOn;
 let toggleSound = document.getElementById('toggle-sound');
 let soundOn = true;
 
-// Function for loading the music audio buffer
-function loadMusic() {
-    // Set up web audio pipeline with gain module
-    let context = new AudioContext();
-    sourceMusic = context.createBufferSource();
-    gainMusic = context.createGain();
-    gainMusic.gain.value = gainMusicVal;
-    sourceMusic.connect(gainMusic);
-    gainMusic.connect(context.destination);
+/*..... Retrieve the music file and store in appropriate buffer .....*/
 
-    // Get data using AJAX
+// Set up web audio pipeline with gain module
+let contextMusic = new AudioContext();
+let sourceMusic = contextMusic.createBufferSource();
+let gainMusic = contextMusic.createGain();
+gainMusic.gain.value = gainMusicVal;
+sourceMusic.connect(gainMusic);
+gainMusic.connect(contextMusic.destination);
+
+// Get data using AJAX
+let requestMusic = new XMLHttpRequest();
+requestMusic.open('GET', musicUrl, true);
+requestMusic.responseType = 'arraybuffer';
+requestMusic.onload = () => {
+    contextMusic.decodeAudioData(requestMusic.response, response => {
+        // Store response in bufferMusic var
+        bufferMusic = response;
+        bufferMusicLoaded = true;
+
+        /*
+        sourceMusic.loop = true;
+        sourceMusic.loopStart = 1.7363; // magic loop start position calculated from song tempo
+        sourceMusic.loopEnd = response.duration;
+        sourceMusic.start();
+        */
+    }, () => {
+        console.error('AJAX request for audio playback failed!');
+    });
+};
+
+// Send request
+requestMusic.send();
+
+/*..... Retrieve the three SFX files and store in array of audio buffers .....*/
+
+// Set up web audio pipeline with gain module
+let contextSFX = new AudioContext();
+let sourceSFX = contextSFX.createBufferSource();
+let gainSFX = contextSFX.createGain();
+gainSFX.gain.value = gainSFXVal;
+sourceSFX.connect(gainSFX);
+gainSFX.connect(contextSFX.destination);
+
+// For every SFX sample, get data using AJAX
+let numSFXLoaded = 0;
+for (let i = 0; i < sfxUrls.length; i++) {
     let request = new XMLHttpRequest();
-    request.open('GET', musicUrl, true);
+    request.open('GET', sfxUrls[i], true);
     request.responseType = 'arraybuffer';
     request.onload = () => {
-        context.decodeAudioData(request.response, response => {
-            // Set up source with the correct buffer and looping settings
-            sourceMusic.buffer = response;
-            sourceMusicLoaded = true;
-            sourceMusic.loop = true;
-            sourceMusic.loopStart = 1.7363; // magic loop start position calculated from song tempo
-            sourceMusic.loopEnd = response.duration;
-            sourceMusic.start();
-        }, () => {
-            console.error('AJAX request for audio playback failed!');
-        });
-    };
-
-    // Send request
-    request.send();
-}
-
-// Function for loading a SFX audio buffer and playing it
-function playSFX(fileUrl) {
-    // Set up web audio pipeline with gain module
-    let context = new AudioContext();
-    let source = context.createBufferSource();
-    let gain = context.createGain();
-    gain.gain.value = gainSFXVal;
-    source.connect(gain);
-    gain.connect(context.destination);
-
-    // Get data using AJAX
-    let request = new XMLHttpRequest();
-    request.open('GET', fileUrl, true);
-    request.responseType = 'arraybuffer';
-    request.onload = () => {
-        context.decodeAudioData(request.response, response => {
-            // Set up and play the sample
-            source.buffer = response;
-            source.start();
+        contextSFX.decodeAudioData(request.response, response => {
+            buffersSFX[i] = response;
+            numSFXLoaded++;
+            if (numSFXLoaded == sfxUrls.length) {
+                allSFXBuffersLoaded = true;
+            }
         }, () => {
             console.error('AJAX request for audio playback failed!');
         });
@@ -371,17 +380,29 @@ function playSFX(fileUrl) {
 
 // Function for starting music playback
 function startMusic() {
-    if (!audioIsPlaying) {
-        loadMusic();
+    if (!audioIsPlaying && bufferMusicLoaded) {
+        // Repopulate the audio context
+        sourceMusic = contextMusic.createBufferSource();
+        gainMusic = contextMusic.createGain();
+        gainMusic.gain.value = gainMusicVal;
+        sourceMusic.connect(gainMusic);
+        gainMusic.connect(contextMusic.destination);
+
+        // Set up the source and play
+        sourceMusic.buffer = bufferMusic;
+        sourceMusic.loop = true;
+        sourceMusic.loopStart = 1.7363; // magic loop start position calculated from song tempo
+        sourceMusic.loopEnd = bufferMusic.duration;
+        sourceMusic.start();
         audioIsPlaying = true;
     }
 }
 
 // Function for stopping music playback
 function stopMusic() {
-    if (audioIsPlaying && sourceMusicLoaded) {
+    if (audioIsPlaying) {
         sourceMusic.stop();
-        sourceMusicLoaded = false;
+        sourceMusic.buffer = null;
         audioIsPlaying = false;
     }
 }
@@ -397,6 +418,28 @@ function dangerMusic() {
 function safetyMusic() {
     if (audioIsPlaying) {
         sourceMusic.playbackRate.value = 1.0;
+    }
+}
+
+// Function for playing an SFX sound
+function playSFX(sfxName) {
+    if (allSFXBuffersLoaded) {
+        sourceSFX = contextSFX.createBufferSource();
+        gainSFX = contextSFX.createGain();
+        gainSFX.gain.value = gainSFXVal;
+        sourceSFX.connect(gainSFX);
+        gainSFX.connect(contextSFX.destination);
+        if (sfxName == 'thingFound') {
+            sourceSFX.buffer = buffersSFX[0];
+        }
+        else if (sfxName == 'levelUp') {
+            sourceSFX.buffer = buffersSFX[1];
+
+        }
+        else if (sfxName == 'gameOver') {
+            sourceSFX.buffer = buffersSFX[2];
+        }
+        sourceSFX.start();
     }
 }
 
@@ -420,11 +463,14 @@ toggleSound.addEventListener('click', event => {
         gainSFXVal = sfxGainOn;
     }
 
-    // If audio is playing, update gain node
+    // If audio is playing, update gain nodes
     if (audioIsPlaying) {
         gainMusic.gain.value = gainMusicVal;
+        gainSFX.gain.value = gainSFXVal;
     }
 })
+
+
 
 /********************** MAIN SECTION **********************/
 
@@ -644,10 +690,10 @@ function gameWin() {
     // If level remains same, play thingFoundUrl
     // If leveled up, play levelUpUrl
     if (streakVal % 3 === 0) {
-        playSFX(levelUpUrl);
+        playSFX('levelUp');
     }
     else {
-        playSFX(thingFoundUrl);
+        playSFX('thingFound');
     }
 }
 
@@ -662,7 +708,7 @@ function gameLose() {
     clearInterval(runningTimer);
 
     // Play game over SFX
-    playSFX(gameOverUrl);
+    playSFX('gameOver');
     
     // Stop music when game ends
     stopMusic();

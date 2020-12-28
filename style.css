@@ -81,6 +81,22 @@ h2 {
     font-size: 30px;
 }
 
+#toggle-sound {
+    cursor: pointer;
+    display: inline-block;
+    padding: 5px 15px;
+    border-radius: 50px;
+    background-color: rgb(190, 190, 190);
+    font-weight: bold;
+    color: black;
+    
+    /* no highlighting */
+    -webkit-user-select: none;  /* Chrome all / Safari all */
+    -moz-user-select: none;     /* Firefox all */
+    -ms-user-select: none;      /* IE 10+ */
+    user-select: none; 
+}
+
 .controls p {
     font-size: 1.5rem;
 }

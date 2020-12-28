@@ -283,9 +283,9 @@ const thingFoundUrl = './media/Absorb2.wav';
 const levelUpUrl = './media/Absorb.wav';
 const gameOverUrl = './media/Bide.wav';
 
-// Set gain values for music and SFX
-const musicGain = 0.35;
-const sfxGain = 0.35;
+// Hard-code gain values for music and SFX when they are on
+const musicGainOn = 0.35;
+const sfxGainOn = 0.35;
 
 // Var for storing whether or not audio is playing
 let audioIsPlaying = false;
@@ -293,20 +293,31 @@ let audioIsPlaying = false;
 // Var for storing whether or not game is in "danger zone"
 let inDangerZone = false;
 
-// The music buffer source needs to be outside the function scope
-// since you want to control the playback dynamically based on
-// the game state
+// The music buffer source and gain nodes need to be outside the
+// function scope since you want to control the playback dynamically
+// based on the game state and the volume toggle button
 let sourceMusic;
+let gainMusic;
+let gainSFX;
+
+// Has the buffer source for music loaded?
+let sourceMusicLoaded = false;
+
+// Vars for toggling volume on/off
+let gainMusicVal = musicGainOn;
+let gainSFXVal = sfxGainOn;
+let toggleSound = document.getElementById('toggle-sound');
+let soundOn = true;
 
 // Function for loading the music audio buffer
 function loadMusic() {
     // Set up web audio pipeline with gain module
     let context = new AudioContext();
     sourceMusic = context.createBufferSource();
-    let gain = context.createGain();
-    gain.gain.value = musicGain;
-    sourceMusic.connect(gain);
-    gain.connect(context.destination);
+    gainMusic = context.createGain();
+    gainMusic.gain.value = gainMusicVal;
+    sourceMusic.connect(gainMusic);
+    gainMusic.connect(context.destination);
 
     // Get data using AJAX
     let request = new XMLHttpRequest();
@@ -316,9 +327,11 @@ function loadMusic() {
         context.decodeAudioData(request.response, response => {
             // Set up source with the correct buffer and looping settings
             sourceMusic.buffer = response;
+            sourceMusicLoaded = true;
             sourceMusic.loop = true;
             sourceMusic.loopStart = 1.7363; // magic loop start position calculated from song tempo
             sourceMusic.loopEnd = response.duration;
+            sourceMusic.start();
         }, () => {
             console.error('AJAX request for audio playback failed!');
         });
@@ -334,7 +347,7 @@ function playSFX(fileUrl) {
     let context = new AudioContext();
     let source = context.createBufferSource();
     let gain = context.createGain();
-    gain.gain.value = sfxGain;
+    gain.gain.value = gainSFXVal;
     source.connect(gain);
     gain.connect(context.destination);
 
@@ -360,15 +373,15 @@ function playSFX(fileUrl) {
 function startMusic() {
     if (!audioIsPlaying) {
         loadMusic();
-        sourceMusic.start(0);
         audioIsPlaying = true;
     }
 }
 
 // Function for stopping music playback
 function stopMusic() {
-    if (audioIsPlaying) {
+    if (audioIsPlaying && sourceMusicLoaded) {
         sourceMusic.stop();
+        sourceMusicLoaded = false;
         audioIsPlaying = false;
     }
 }
@@ -386,6 +399,32 @@ function safetyMusic() {
         sourceMusic.playbackRate.value = 1.0;
     }
 }
+
+// Toggle sound on/off
+toggleSound.addEventListener('click', event => {
+    event.preventDefault();
+
+    // Set gain values
+    if (soundOn) {
+        soundOn = false;
+        toggleSound.style.color = 'gray';
+        toggleSound.style.backgroundColor = 'rgb(230, 230, 230)';
+        gainMusicVal = 0.0;
+        gainSFXVal = 0.0;
+    }
+    else {
+        soundOn = true;
+        toggleSound.style.color = 'black';
+        toggleSound.style.backgroundColor = 'rgb(190, 190, 190)';
+        gainMusicVal = musicGainOn;
+        gainSFXVal = sfxGainOn;
+    }
+
+    // If audio is playing, update gain node
+    if (audioIsPlaying) {
+        gainMusic.gain.value = gainMusicVal;
+    }
+})
 
 /********************** MAIN SECTION **********************/
 
@@ -622,11 +661,11 @@ function gameLose() {
     player.style.backgroundColor = 'red';
     clearInterval(runningTimer);
 
-    // Stop music when game ends
-    stopMusic();
-
     // Play game over SFX
     playSFX(gameOverUrl);
+    
+    // Stop music when game ends
+    stopMusic();
 }
 
 // Check field for game-over conditions. char is the character returned from updatePosition() method
@@ -735,7 +774,7 @@ function reset() {
 plotField(myField, fieldDiv);
 
 // Listen for player movement inputs, update grid, check for game over conditions, and respond as needed
-function playerMove() {
+document.addEventListener('keydown', event => {
     // listen for the right inputs
     if ((event.code === 'KeyW' || event.code === 'ArrowUp') && stillPlaying) {
         let newChar = myField.updatePosition('u');
@@ -761,13 +800,12 @@ function playerMove() {
         plotField(myField, fieldDiv);
         checkGameOver(myField, newChar);
     }
-}
-document.onkeydown = playerMove;
+});
 
 // Press ENTER to hard reset the game
-document.addEventListener('keydown', function () {
+document.addEventListener('keydown', event => {
     if (event.code === 'Enter') {
-        stopMusic();
         reset();
+        stopMusic();
     }
 })

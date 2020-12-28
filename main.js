@@ -331,13 +331,6 @@ requestMusic.onload = () => {
         // Store response in bufferMusic var
         bufferMusic = response;
         bufferMusicLoaded = true;
-
-        /*
-        sourceMusic.loop = true;
-        sourceMusic.loopStart = 1.7363; // magic loop start position calculated from song tempo
-        sourceMusic.loopEnd = response.duration;
-        sourceMusic.start();
-        */
     }, () => {
         console.error('AJAX request for audio playback failed!');
     });

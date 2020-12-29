@@ -12,7 +12,7 @@ Find the thing without falling into a hole!
 
 ## How To Play
 
-This is a fast-paced game. Every time you find a thing, the field will reset and 5 seconds will be added to the countdown timer. The fields will grow progressively harder over time. If you fall into a hole or the timer runs out, the game will end.
+Use your keyboard's WASD or arrow keys to move. Every time you find a thing, the field will reset and 5 seconds will be added to the countdown timer. The more fields you clear, the harder the game will get. If you fall into a hole or if the timer runs out, it's game over.
 
 See how many fields you can clear!
 

@@ -667,9 +667,6 @@ function updateScoreboard() {
 // You won!
 function gameWin() {
     stillPlaying = false // is only temporary!
-    let msg = document.getElementById('msg');
-    msg.style.color = 'green';
-    msg.innerHTML = 'Found it!';
     let player = document.querySelector('.player');
     player.style.backgroundColor = 'yellow';
     streakVal++;
@@ -679,14 +676,18 @@ function gameWin() {
     updateScoreboard();
     winReset(); // stillPlaying will switch back to true here
 
-    // Play appropriate SFX
-    // If level remains same, play thingFoundUrl
-    // If leveled up, play levelUpUrl
+    // Play appropriate SFX and update msg
+    // If level remains same, play thingFoundUrl and display "Found it!"
+    // If leveled up, play levelUpUrl and display "Level up!"
+    let msg = document.getElementById('msg');
+    msg.style.color = 'green';
     if (streakVal % 3 === 0) {
         playSFX('levelUp');
+        msg.innerHTML = 'Level up!';
     }
     else {
         playSFX('thingFound');
+        msg.innerHTML = 'Found it!';
     }
 }
 

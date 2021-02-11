@@ -1,6 +1,6 @@
 # Find The Thing
 
-This repository contains source code for a maze-like browser game which uses a recursive nearest-neighbor percolation method to produce playable levels that progressively increase in difficulty. Music and sound effects are compatible with modern versions of Safari, Chrome, Firefox and Edge.
+This repository contains source code for a maze-like browser game which uses a recursive nearest-neighbor percolation method to produce maze levels with increasing difficulty. Music and sound effects are compatible with modern versions of Safari, Chrome, Firefox and Edge.
 
 If you are on a non-mobile device with a keyboard (i.e. desktop or laptop), you can [play the game here](https://dsshen.github.io/find-the-thing/)!
 
